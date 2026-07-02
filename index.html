@@ -853,7 +853,8 @@
                     for(let j = 0; j < numStations; j++) {
                         const sIdx = ((startIdx + j) % numStations) + 1; // 1-indexed station numbers
                         route.push(sIdx);
-                        unlockCodes[sIdx] = Math.random().toString(36).substring(2, 6).toUpperCase();
+                        // Prefix with 's_' to prevent Firestore from mangling integer keys into arrays
+                        unlockCodes[`s_${sIdx}`] = Math.random().toString(36).substring(2, 6).toUpperCase();
                     }
 
                     // Generate a unique 4-character access code for the group to login
@@ -935,12 +936,16 @@
             ui.liveStationCodesGrid.innerHTML = '';
             gameData.stations.forEach(station => {
                 // Build list of group codes for this specific station
-                let teamCodesHtml = gameData.teams.map(t => `
+                let teamCodesHtml = gameData.teams.map(t => {
+                    // Safe fallback for backwards compatibility and array-preventing prefix
+                    const expectedCode = (t.unlockCodes && t.unlockCodes[`s_${station.stationIndex}`]) || (t.unlockCodes && t.unlockCodes[station.stationIndex]) || station.stationCode || 'N/A';
+                    return `
                     <div class="flex justify-between items-center py-1 border-b border-indigo-50 last:border-0">
                         <span class="text-sm font-medium text-slate-600">${t.name}</span>
-                        <span class="font-mono font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">${t.unlockCodes[station.stationIndex]}</span>
+                        <span class="font-mono font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">${expectedCode}</span>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 const codeCard = document.createElement('div');
                 codeCard.className = "bg-white rounded-xl border border-indigo-100 p-4 shadow-sm relative overflow-hidden";
@@ -1215,8 +1220,10 @@
                             const enteredCode = input.value.trim().toUpperCase();
                             const btn = form.querySelector('button');
                             
-                            // Check against the team's unique unlock code for this specific station
-                            if (enteredCode === team.unlockCodes[stationNum]) {
+                            // Check against the team's unique unlock code (with backwards compatibility)
+                            const expectedCode = (team.unlockCodes && team.unlockCodes[`s_${stationNum}`]) || (team.unlockCodes && team.unlockCodes[stationNum]) || stationData.stationCode;
+                            
+                            if (enteredCode === expectedCode) {
                                 btn.disabled = true;
                                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
                                 
