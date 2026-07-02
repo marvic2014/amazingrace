@@ -897,6 +897,7 @@
                     numStations: numStations,
                     qPerStation: qPerStation,
                     stations: stations,
+                    teams: teams, // FIX: Added the teams array back to the save payload
                     status: 'active',
                     createdAt: Date.now()
                 });
@@ -941,10 +942,14 @@
             ui.liveGameCode.textContent = gameData.gameCode;
             ui.liveStationCount.textContent = `Total Stations: ${gameData.numStations}`;
             
+            // Safely fallback to empty arrays in case of corrupted data
+            const safeTeams = gameData.teams || [];
+            const safeStations = gameData.stations || [];
+            
             // Render Station Codes for Teacher
             ui.liveStationCodesGrid.innerHTML = '';
-            gameData.stations.forEach(station => {
-                let teamCodesHtml = gameData.teams.map(t => {
+            safeStations.forEach(station => {
+                let teamCodesHtml = safeTeams.map(t => {
                     const expectedCode = (t.unlockCodes && t.unlockCodes[`s_${station.stationIndex}`]) || (t.unlockCodes && t.unlockCodes[station.stationIndex]) || 'N/A';
                     return `
                     <div class="flex justify-between items-center py-1 border-b border-indigo-50 last:border-0">
@@ -973,12 +978,12 @@
             });
 
             // Find completed teams and sort by finish time for leaderboards
-            const finishedTeams = gameData.teams.filter(t => t.completed).sort((a, b) => (a.finishedAt || 0) - (b.finishedAt || 0));
+            const finishedTeams = safeTeams.filter(t => t.completed).sort((a, b) => (a.finishedAt || 0) - (b.finishedAt || 0));
 
             // Render Team Progress
             ui.liveTeamsGrid.innerHTML = '';
             
-            gameData.teams.forEach(team => {
+            safeTeams.forEach(team => {
                 const progressPct = team.completed ? 100 : (team.currentRouteIndex / gameData.numStations) * 100;
                 const completedCount = team.completed ? gameData.numStations : team.currentRouteIndex;
                 
