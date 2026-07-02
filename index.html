@@ -213,19 +213,23 @@
                 </div>
 
                 <form id="game-setup-form">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-2">Number of Groups (Teams)</label>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Number of Groups</label>
                             <input type="number" id="setup-num-groups" min="1" max="20" value="4" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-lg">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Number of Stations</label>
                             <input type="number" id="setup-num-stations" min="1" max="50" value="3" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-lg">
                         </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Questions per Station</label>
+                            <input type="number" id="setup-q-per-station" min="1" max="10" value="2" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-lg" title="Different groups will get different questions to minimize overlap.">
+                        </div>
                     </div>
 
                     <h3 class="font-bold text-lg text-slate-800 mb-4 border-b border-slate-100 pb-2">Station Configuration</h3>
-                    <p class="text-sm text-slate-500 mb-4">Assign a physical location and a specific question for each station.</p>
+                    <p class="text-sm text-slate-500 mb-4">Set the physical location clue for each station. The system will automatically generate unique codes and assign random questions.</p>
                     
                     <div id="setup-stations-container" class="space-y-4 mb-8">
                         <!-- Stations generated dynamically -->
@@ -302,6 +306,14 @@
                 </div>
                 <h2 class="text-4xl font-black text-slate-800 mb-4">Race Completed!</h2>
                 <p class="text-lg text-slate-500">You have successfully finished all the stations. Head back to your teacher!</p>
+            </div>
+
+            <!-- Opponent Progress (Student View) -->
+            <div class="mt-8 bg-slate-50 rounded-2xl p-6 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-ranking-star text-amber-500 mr-2"></i> Live Leaderboard</h3>
+                <div id="student-leaderboard-container" class="space-y-4">
+                    <!-- Leaderboard injected dynamically -->
+                </div>
             </div>
         </div>
 
@@ -453,6 +465,7 @@
             gameSetupForm: document.getElementById('game-setup-form'),
             setupNumGroups: document.getElementById('setup-num-groups'),
             setupNumStations: document.getElementById('setup-num-stations'),
+            setupQPerStation: document.getElementById('setup-q-per-station'),
             setupStationsContainer: document.getElementById('setup-stations-container'),
             
             gameLiveView: document.getElementById('game-live-view'),
@@ -468,6 +481,7 @@
             studentLeaveBtn: document.getElementById('student-leave-btn'),
             studentStationsContainer: document.getElementById('student-stations-container'),
             studentFinishedRace: document.getElementById('student-finished-race'),
+            studentLeaderboardContainer: document.getElementById('student-leaderboard-container'),
 
             modalNewCollection: document.getElementById('modal-new-collection'),
             formNewCollection: document.getElementById('form-new-collection'),
@@ -578,19 +592,17 @@
 
         // --- Data Fetching (Following Strict Firestore Rules) ---
         function fetchData() {
-            if (!currentUser) return; // Guard clause
+            if (!currentUser) return; 
 
-            // 1. Fetch Collections (Private Data Path)
+            // 1. Fetch Collections
             const collectionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'collections');
             unsubscribeCollections = onSnapshot(collectionsRef, (snapshot) => {
                 collections = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sort in memory (Rule 2 workaround)
                 collections.sort((a, b) => b.createdAt - a.createdAt);
                 
                 if (currentCollectionId === null) {
                     renderCollections();
                 } else {
-                    // Update header if we are currently viewing a collection that just got renamed (if edit was supported)
                     updateCollectionHeader();
                 }
             }, (error) => {
@@ -598,11 +610,10 @@
                 showToast("Failed to load collections.", true);
             });
 
-            // 2. Fetch ALL Questions (Private Data Path - Rule 2: No complex queries, fetch all, filter in JS)
+            // 2. Fetch ALL Questions
             const questionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'questions');
             unsubscribeQuestions = onSnapshot(questionsRef, (snapshot) => {
                 allQuestions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sort in memory
                 allQuestions.sort((a, b) => b.createdAt - a.createdAt);
                 
                 if (currentCollectionId !== null) {
@@ -658,7 +669,6 @@
                     </div>
                 `;
                 
-                // Event delegation for card click
                 card.addEventListener('click', (e) => {
                     if (e.target.closest('.delete-col-btn')) {
                         deleteCollection(col.id);
@@ -675,7 +685,7 @@
             currentCollectionId = id;
             ui.dashboardView.classList.add('hidden');
             ui.gameSetupView.classList.add('hidden');
-            ui.gameLiveView.classList.add('hidden'); // Fix: Ensure Live Dashboard hides when backing out
+            ui.gameLiveView.classList.add('hidden');
             ui.collectionView.classList.remove('hidden');
             updateCollectionHeader();
             renderQuestions();
@@ -692,7 +702,6 @@
         function renderQuestions() {
             ui.questionsList.innerHTML = '';
             
-            // Filter questions in JS (Rule 2 compliance) + Search Filter
             let collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
             
             if (searchQuery) {
@@ -781,9 +790,9 @@
             ui.collectionView.classList.add('hidden');
             ui.gameSetupView.classList.remove('hidden');
             
-            // Reset and render initial stations
             ui.setupNumStations.value = 3;
             ui.setupNumGroups.value = 4;
+            ui.setupQPerStation.value = 1;
             renderSetupStations();
         }
 
@@ -819,6 +828,7 @@
             try {
                 const numGroups = parseInt(ui.setupNumGroups.value);
                 const numStations = parseInt(ui.setupNumStations.value);
+                const qPerStation = parseInt(ui.setupQPerStation.value) || 1;
                 
                 // Fetch and shuffle questions for random assignment
                 const collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
@@ -828,33 +838,40 @@
                 
                 // Build stations array with randomly embedded question data
                 const stations = [];
+                let questionPoolIndex = 0;
+
                 for (let i = 1; i <= numStations; i++) {
-                    // Use modulo to wrap around if there are more stations than questions
-                    const qData = shuffledQuestions[(i - 1) % shuffledQuestions.length];
+                    const stationQuestions = [];
+                    for (let k = 0; k < qPerStation; k++) {
+                        const qData = shuffledQuestions[questionPoolIndex % shuffledQuestions.length];
+                        stationQuestions.push({
+                            text: qData.text,
+                            options: qData.options,
+                            correctAnswer: qData.correctAnswer
+                        });
+                        questionPoolIndex++;
+                    }
                     
                     stations.push({
                         stationIndex: i,
                         locationHint: document.getElementById(`station-loc-${i}`).value.trim(),
-                        question: {
-                            text: qData.text,
-                            options: qData.options,
-                            correctAnswer: qData.correctAnswer
-                        }
+                        questions: stationQuestions
                     });
                 }
                 
-                // Build initial teams array with staggered routes and unique unlock codes per station
+                // Build initial teams array with staggered routes and distinct question assignments
                 const teams = [];
                 for (let i = 0; i < numGroups; i++) {
-                    // Generate Staggered Route (e.g. if 4 stations, Group 2 route: [2, 3, 4, 1])
                     const route = [];
-                    const unlockCodes = {}; // Map of station index to this team's unique code
+                    const unlockCodes = {}; 
+                    const qIndexes = {}; 
+                    
                     let startIdx = i % numStations; 
                     for(let j = 0; j < numStations; j++) {
                         const sIdx = ((startIdx + j) % numStations) + 1; // 1-indexed station numbers
                         route.push(sIdx);
-                        // Prefix with 's_' to prevent Firestore from mangling integer keys into arrays
                         unlockCodes[`s_${sIdx}`] = Math.random().toString(36).substring(2, 6).toUpperCase();
+                        qIndexes[`s_${sIdx}`] = (i + j) % qPerStation; // Offset index to assign different questions
                     }
 
                     // Generate a unique 4-character access code for the group to login
@@ -866,16 +883,17 @@
                         accessCode: accessCode,
                         route: route,
                         unlockCodes: unlockCodes,
+                        qIndexes: qIndexes, 
                         currentRouteIndex: 0, 
-                        currentStationUnlocked: false, // Track if they found the physical code
-                        completed: false
+                        currentStationUnlocked: false,
+                        completed: false,
+                        finishedAt: null
                     });
                 }
 
                 // Generate random 5-char code for the overall session
                 const gameCode = Math.random().toString(36).substring(2, 7).toUpperCase();
 
-                // Save to PUBLIC path so students can eventually access it
                 const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
                 const newGameDoc = await addDoc(gamesRef, {
                     hostId: currentUser.uid,
@@ -891,13 +909,10 @@
 
                 currentGameId = newGameDoc.id;
                 
-                // Transition to live view
                 ui.gameSetupView.classList.add('hidden');
                 ui.gameLiveView.classList.remove('hidden');
                 
-                // Set up live listener
                 listenToLiveGame();
-                
                 showToast("Live session launched!");
             } catch (error) {
                 console.error("Error launching game:", error);
@@ -932,13 +947,11 @@
             ui.liveGameCode.textContent = gameData.gameCode;
             ui.liveStationCount.textContent = `Total Stations: ${gameData.numStations}`;
             
-            // 1. Render Station Codes for Teacher
+            // Render Station Codes for Teacher
             ui.liveStationCodesGrid.innerHTML = '';
             gameData.stations.forEach(station => {
-                // Build list of group codes for this specific station
                 let teamCodesHtml = gameData.teams.map(t => {
-                    // Safe fallback for backwards compatibility and array-preventing prefix
-                    const expectedCode = (t.unlockCodes && t.unlockCodes[`s_${station.stationIndex}`]) || (t.unlockCodes && t.unlockCodes[station.stationIndex]) || station.stationCode || 'N/A';
+                    const expectedCode = (t.unlockCodes && t.unlockCodes[`s_${station.stationIndex}`]) || (t.unlockCodes && t.unlockCodes[station.stationIndex]) || 'N/A';
                     return `
                     <div class="flex justify-between items-center py-1 border-b border-indigo-50 last:border-0">
                         <span class="text-sm font-medium text-slate-600">${t.name}</span>
@@ -965,25 +978,38 @@
                 ui.liveStationCodesGrid.appendChild(codeCard);
             });
 
-            // 2. Render Team Progress
+            // Find completed teams and sort by finish time for leaderboards
+            const finishedTeams = gameData.teams.filter(t => t.completed).sort((a, b) => (a.finishedAt || 0) - (b.finishedAt || 0));
+
+            // Render Team Progress
             ui.liveTeamsGrid.innerHTML = '';
             
             gameData.teams.forEach(team => {
-                // Calculate progress based on their route index
                 const progressPct = team.completed ? 100 : (team.currentRouteIndex / gameData.numStations) * 100;
-                
-                // Determine how many stations they've completed (0-based)
                 const completedCount = team.completed ? gameData.numStations : team.currentRouteIndex;
                 
+                const rankIndex = finishedTeams.findIndex(t => t.id === team.id);
+                let statusBadge = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold uppercase">Racing</span>`;
+                
+                if (team.completed) {
+                    if (rankIndex !== -1) {
+                        const rank = rankIndex + 1;
+                        let rankText = rank + "th Place";
+                        if (rank === 1) rankText = "1st Place 🏆";
+                        else if (rank === 2) rankText = "2nd Place 🥈";
+                        else if (rank === 3) rankText = "3rd Place 🥉";
+                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase"><i class="fa-solid fa-check mr-1"></i> ${rankText}</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase"><i class="fa-solid fa-check mr-1"></i> Finished</span>`;
+                    }
+                }
+
                 const card = document.createElement('div');
                 card.className = "bg-white border border-slate-200 rounded-xl p-6 shadow-sm relative overflow-hidden flex flex-col";
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-4">
                         <h4 class="font-bold text-xl text-slate-800">${escapeHTML(team.name)}</h4>
-                        ${team.completed 
-                            ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase"><i class="fa-solid fa-check"></i> Finished</span>` 
-                            : `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold uppercase">Racing</span>`
-                        }
+                        ${statusBadge}
                     </div>
                     
                     <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 mb-4 text-center">
@@ -1042,20 +1068,15 @@
             ui.studentJoinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Joining...';
 
             try {
-                // Set flag BEFORE auth changes so the listener knows we are a student
                 isStudentMode = true; 
 
-                // Ensure the user is strictly an anonymous student (logout teacher if testing in same browser)
                 if (auth.currentUser && !auth.currentUser.isAnonymous) {
                     await signOut(auth);
                 }
-
-                // Authenticate anonymously if not logged in
                 if (!auth.currentUser) {
                     await signInAnonymously(auth);
                 }
 
-                // Query all games (Following Rule 2: Fetch all, filter in JS)
                 const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
                 const snapshot = await getDocs(gamesRef);
                 
@@ -1129,6 +1150,7 @@
                 ui.studentFinishedRace.classList.add('hidden');
             }
             
+            // 1. Render Active Game Stations
             ui.studentStationsContainer.innerHTML = '';
             
             team.route.forEach((stationNum, index) => {
@@ -1136,6 +1158,10 @@
                 const isActive = index === team.currentRouteIndex && !team.completed;
                 const isLocked = index > team.currentRouteIndex || (index === team.currentRouteIndex && team.completed);
                 const stationData = gameData.stations.find(s => s.stationIndex === stationNum);
+
+                // Find the specifically assigned question for this group at this station
+                const qIdx = (team.qIndexes && team.qIndexes[`s_${stationNum}`]) || 0;
+                const stationQuestion = stationData.questions ? stationData.questions[qIdx] : stationData.question;
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-xl shadow-sm border-2 ${isActive ? 'border-amber-500' : (isCompleted ? 'border-green-500' : 'border-slate-200')} overflow-hidden transition-all`;
@@ -1198,13 +1224,13 @@
                         contentHTML += `
                             <div>
                                 <span class="text-xs font-bold text-green-600 uppercase tracking-widest block mb-2"><i class="fa-solid fa-unlock mr-1"></i> Question Unlocked</span>
-                                <h4 class="text-lg font-semibold text-slate-800 mb-5 whitespace-pre-wrap">${escapeHTML(stationData.question.text)}</h4>
+                                <h4 class="text-lg font-semibold text-slate-800 mb-5 whitespace-pre-wrap">${escapeHTML(stationQuestion.text)}</h4>
                                 <div id="active-options-${stationNum}" class="space-y-3">
                                 </div>
                             </div>
                         `;
                     }
-                    contentHTML += `</div>`; // Close padding container
+                    contentHTML += `</div>`; 
                 }
 
                 card.innerHTML = contentHTML;
@@ -1220,7 +1246,6 @@
                             const enteredCode = input.value.trim().toUpperCase();
                             const btn = form.querySelector('button');
                             
-                            // Check against the team's unique unlock code (with backwards compatibility)
                             const expectedCode = (team.unlockCodes && team.unlockCodes[`s_${stationNum}`]) || (team.unlockCodes && team.unlockCodes[stationNum]) || stationData.stationCode;
                             
                             if (enteredCode === expectedCode) {
@@ -1245,27 +1270,60 @@
                     } else {
                         const optsContainer = document.getElementById(`active-options-${stationNum}`);
                         ['A', 'B', 'C', 'D'].forEach(opt => {
-                            if (stationData.question.options[opt]) {
+                            if (stationQuestion.options[opt]) {
                                 const btn = document.createElement('button');
                                 btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
-                                btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationData.question.options[opt])}</span>`;
+                                btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationQuestion.options[opt])}</span>`;
                                 
-                                btn.onclick = () => submitStudentAnswer(gameData, team, stationData, opt, btn);
+                                btn.onclick = () => submitStudentAnswer(gameData, team, stationQuestion, opt, btn);
                                 optsContainer.appendChild(btn);
                             }
                         });
                     }
                 }
             });
+
+            // 2. Render Opponent Progress (Live Leaderboard)
+            ui.studentLeaderboardContainer.innerHTML = '';
+            
+            const sortedTeams = [...gameData.teams].sort((a, b) => {
+                if (a.completed && b.completed) return (a.finishedAt || 0) - (b.finishedAt || 0);
+                if (a.completed) return -1;
+                if (b.completed) return 1;
+                return b.currentRouteIndex - a.currentRouteIndex;
+            });
+
+            sortedTeams.forEach((t, i) => {
+                const isMe = t.id === team.id;
+                const progressPct = t.completed ? 100 : (t.currentRouteIndex / gameData.numStations) * 100;
+                
+                let statusText = `${t.currentRouteIndex} / ${gameData.numStations}`;
+                if (t.completed) {
+                    const rank = i + 1;
+                    statusText = rank === 1 ? "1st 🏆" : (rank === 2 ? "2nd 🥈" : (rank === 3 ? "3rd 🥉" : `${rank}th`));
+                }
+                
+                const row = document.createElement('div');
+                row.className = `p-3 rounded-lg border ${isMe ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`;
+                row.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold ${isMe ? 'text-indigo-800' : 'text-slate-700'}">${escapeHTML(t.name)} ${isMe ? '(You)' : ''}</span>
+                        <span class="text-xs font-bold ${t.completed ? 'text-green-600' : 'text-slate-500'}">${statusText}</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2">
+                        <div class="${isMe ? 'bg-indigo-500' : 'bg-slate-400'} h-2 rounded-full transition-all duration-500" style="width: ${progressPct}%"></div>
+                    </div>
+                `;
+                ui.studentLeaderboardContainer.appendChild(row);
+            });
         }
         
-        async function submitStudentAnswer(gameData, team, stationData, selectedOpt, btnElement) {
-            // Find the active options container and disable buttons
+        async function submitStudentAnswer(gameData, team, stationQuestion, selectedOpt, btnElement) {
             const container = btnElement.parentElement;
             const buttons = container.querySelectorAll('button');
             buttons.forEach(b => b.disabled = true);
             
-            if (selectedOpt === stationData.question.correctAnswer) {
+            if (selectedOpt === stationQuestion.correctAnswer) {
                 btnElement.classList.replace('border-slate-200', 'border-green-500');
                 btnElement.classList.replace('hover:bg-amber-50', 'bg-green-50');
                 
@@ -1274,8 +1332,14 @@
                 const updatedTeams = gameData.teams.map(t => {
                     if (t.id === team.id) {
                         const newIndex = t.currentRouteIndex + 1;
-                        // Important: Relock the next station and advance the index
-                        return { ...t, currentRouteIndex: newIndex, currentStationUnlocked: false, completed: newIndex >= gameData.numStations };
+                        const isCompleted = newIndex >= gameData.numStations;
+                        return { 
+                            ...t, 
+                            currentRouteIndex: newIndex, 
+                            currentStationUnlocked: false, 
+                            completed: isCompleted,
+                            finishedAt: isCompleted ? Date.now() : (t.finishedAt || null)
+                        };
                     }
                     return t;
                 });
@@ -1292,7 +1356,6 @@
                 btnElement.classList.replace('hover:bg-amber-50', 'bg-red-50');
                 showToast("Incorrect answer. Try again!", true);
                 
-                // Re-enable after delay
                 setTimeout(() => {
                     btnElement.classList.replace('border-red-400', 'border-slate-200');
                     btnElement.classList.replace('bg-red-50', 'hover:bg-amber-50');
@@ -1308,7 +1371,7 @@
             studentTeamId = null;
             
             ui.studentJoinForm.reset();
-            handleAuthStateChanged(auth.currentUser); // Recalculate views
+            handleAuthStateChanged(auth.currentUser); 
         }
 
         // --- Action Logic (CRUD) ---
@@ -1338,6 +1401,17 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Create';
+            }
+        }
+
+        async function deleteCollection(id) {
+            if (!currentUser) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'collections', id));
+                showToast("Collection deleted.");
+            } catch (error) {
+                console.error("Error deleting collection:", error);
+                showToast("Failed to delete collection.", true);
             }
         }
 
@@ -1397,7 +1471,6 @@
 
         // --- CSV Parsing and Import ---
         function parseCSVLine(text) {
-            // Basic CSV parser handling quotes
             let ret = [];
             let inQuote = false;
             let value = '';
@@ -1436,7 +1509,6 @@
                 for (let line of lines) {
                     const parts = parseCSVLine(line);
                     
-                    // Expecting: Question, OptA, OptB, OptC, OptD, Correct(A/B/C/D)
                     if (parts.length >= 6) {
                         try {
                             const correctAnswer = parts[5].toUpperCase().replace(/[^ABCD]/g, '');
@@ -1446,7 +1518,7 @@
                                     text: parts[0],
                                     options: { A: parts[1], B: parts[2], C: parts[3], D: parts[4] },
                                     correctAnswer: correctAnswer,
-                                    createdAt: Date.now() + successCount // ensure slightly different timestamps
+                                    createdAt: Date.now() + successCount 
                                 });
                                 successCount++;
                             } else {
@@ -1458,13 +1530,12 @@
                     }
                 }
                 
-                ui.csvFileInput.value = ''; // reset
+                ui.csvFileInput.value = ''; 
                 showToast(`Import complete. ${successCount} added. ${failCount > 0 ? failCount + ' failed formatting.' : ''}`);
             };
             
             reader.readAsText(file);
         }
-
 
         // --- Event Listeners Setup ---
         function setupEventListeners() {
@@ -1520,7 +1591,7 @@
             });
             
             document.getElementById('open-new-question-modal').addEventListener('click', () => {
-                editingQuestionId = null; // Reset to creation mode
+                editingQuestionId = null; 
                 ui.formNewQuestion.reset();
                 ui.modalNewQuestion.querySelector('h3').textContent = 'Add Question';
                 ui.formNewQuestion.querySelector('button[type="submit"]').textContent = 'Save Question';
@@ -1529,10 +1600,9 @@
                 document.getElementById('input-q-text').focus();
             });
             
-            // Search Input Logic
             ui.searchInput.addEventListener('input', (e) => {
                 searchQuery = e.target.value;
-                renderQuestions(); // Re-render triggers filtering
+                renderQuestions(); 
             });
 
             // Forms Submission
@@ -1575,7 +1645,6 @@
             );
         }
         
-        // Expose closeModals globally for internal form resets
         window.closeModals = () => document.querySelectorAll('.fixed.inset-0').forEach(el => el.classList.add('hidden'));
 
         // Start App
