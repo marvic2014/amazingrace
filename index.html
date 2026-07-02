@@ -834,28 +834,21 @@
                 const collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
                 if (collectionQuestions.length === 0) throw new Error("No questions available.");
                 
-                const shuffledQuestions = [...collectionQuestions].sort(() => 0.5 - Math.random());
-                
                 // Build stations array with randomly embedded question data
                 const stations = [];
-                let questionPoolIndex = 0;
 
                 for (let i = 1; i <= numStations; i++) {
-                    const stationQuestions = [];
-                    for (let k = 0; k < qPerStation; k++) {
-                        const qData = shuffledQuestions[questionPoolIndex % shuffledQuestions.length];
-                        stationQuestions.push({
-                            text: qData.text,
-                            options: qData.options,
-                            correctAnswer: qData.correctAnswer
-                        });
-                        questionPoolIndex++;
-                    }
+                    // Give each station a uniquely shuffled full set of questions to pull from continuously
+                    const stationShuffled = [...collectionQuestions].sort(() => 0.5 - Math.random());
                     
                     stations.push({
                         stationIndex: i,
                         locationHint: document.getElementById(`station-loc-${i}`).value.trim(),
-                        questions: stationQuestions
+                        questions: stationShuffled.map(q => ({
+                            text: q.text,
+                            options: q.options,
+                            correctAnswer: q.correctAnswer
+                        }))
                     });
                 }
                 
@@ -864,14 +857,12 @@
                 for (let i = 0; i < numGroups; i++) {
                     const route = [];
                     const unlockCodes = {}; 
-                    const qIndexes = {}; 
                     
                     let startIdx = i % numStations; 
                     for(let j = 0; j < numStations; j++) {
                         const sIdx = ((startIdx + j) % numStations) + 1; // 1-indexed station numbers
                         route.push(sIdx);
                         unlockCodes[`s_${sIdx}`] = Math.random().toString(36).substring(2, 6).toUpperCase();
-                        qIndexes[`s_${sIdx}`] = (i + j) % qPerStation; // Offset index to assign different questions
                     }
 
                     // Generate a unique 4-character access code for the group to login
@@ -883,9 +874,12 @@
                         accessCode: accessCode,
                         route: route,
                         unlockCodes: unlockCodes,
-                        qIndexes: qIndexes, 
                         currentRouteIndex: 0, 
                         currentStationUnlocked: false,
+                        stationCorrectAnswers: 0,
+                        stationWrongAnswers: 0,
+                        stationQuestionIndex: i * 2, // Offset so groups see different questions
+                        lockoutUntil: null,
                         completed: false,
                         finishedAt: null
                     });
@@ -901,8 +895,8 @@
                     gameCode: gameCode,
                     numGroups: numGroups,
                     numStations: numStations,
+                    qPerStation: qPerStation,
                     stations: stations,
-                    teams: teams,
                     status: 'active',
                     createdAt: Date.now()
                 });
@@ -1160,8 +1154,9 @@
                 const stationData = gameData.stations.find(s => s.stationIndex === stationNum);
 
                 // Find the specifically assigned question for this group at this station
-                const qIdx = (team.qIndexes && team.qIndexes[`s_${stationNum}`]) || 0;
-                const stationQuestion = stationData.questions ? stationData.questions[qIdx] : stationData.question;
+                // Using modulo to wrap around if they answer more questions than exist in the pool
+                const qIdx = (team.stationQuestionIndex || 0) % stationData.questions.length;
+                const stationQuestion = stationData.questions[qIdx];
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-xl shadow-sm border-2 ${isActive ? 'border-amber-500' : (isCompleted ? 'border-green-500' : 'border-slate-200')} overflow-hidden transition-all`;
@@ -1220,10 +1215,48 @@
                                 </form>
                             </div>
                         `;
+                    } else if (team.lockoutUntil && Date.now() < team.lockoutUntil) {
+                        const timeLeft = Math.ceil((team.lockoutUntil - Date.now()) / 1000);
+                        contentHTML += `
+                            <div class="text-center py-6">
+                                <i class="fa-solid fa-ban text-6xl text-red-500 mb-4 animate-pulse"></i>
+                                <h4 class="text-2xl font-bold text-slate-800 mb-2">Locked Out</h4>
+                                <p class="text-slate-600 mb-4">Too many incorrect attempts! Station progress reset.</p>
+                                <div class="text-5xl font-mono font-black text-red-600" id="lockout-timer-${team.id}">${timeLeft}s</div>
+                            </div>
+                        `;
+                        
+                        // Setup timer interval
+                        if (window[`lockoutInterval_${team.id}`]) clearInterval(window[`lockoutInterval_${team.id}`]);
+                        window[`lockoutInterval_${team.id}`] = setInterval(() => {
+                            const newTime = Math.ceil((team.lockoutUntil - Date.now()) / 1000);
+                            const timerEl = document.getElementById(`lockout-timer-${team.id}`);
+                            if (timerEl) {
+                                if (newTime > 0) {
+                                    timerEl.textContent = `${newTime}s`;
+                                } else {
+                                    clearInterval(window[`lockoutInterval_${team.id}`]);
+                                    const updatedTeams = gameData.teams.map(t => t.id === team.id ? { ...t, lockoutUntil: null } : t);
+                                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', studentGameId), { teams: updatedTeams }).catch(()=>{});
+                                }
+                            }
+                        }, 1000);
                     } else {
+                        const correctAnswers = team.stationCorrectAnswers || 0;
+                        const wrongAnswers = team.stationWrongAnswers || 0;
+                        
                         contentHTML += `
                             <div>
-                                <span class="text-xs font-bold text-green-600 uppercase tracking-widest block mb-2"><i class="fa-solid fa-unlock mr-1"></i> Question Unlocked</span>
+                                <div class="flex justify-between items-end mb-4 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <span class="text-xs font-bold text-green-600 uppercase tracking-widest block mb-1"><i class="fa-solid fa-unlock mr-1"></i> Unlocked</span>
+                                        <span class="text-sm font-bold text-slate-600">Progress: <span class="text-indigo-600">${correctAnswers} / ${gameData.qPerStation}</span></span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs font-bold text-red-500 uppercase tracking-widest block mb-1">Strikes</span>
+                                        <span class="text-sm font-bold text-red-600">${wrongAnswers} / ${gameData.qPerStation}</span>
+                                    </div>
+                                </div>
                                 <h4 class="text-lg font-semibold text-slate-800 mb-5 whitespace-pre-wrap">${escapeHTML(stationQuestion.text)}</h4>
                                 <div id="active-options-${stationNum}" class="space-y-3">
                                 </div>
@@ -1267,18 +1300,20 @@
                                 input.value = '';
                             }
                         };
-                    } else {
+                    } else if (!team.lockoutUntil || Date.now() >= team.lockoutUntil) {
                         const optsContainer = document.getElementById(`active-options-${stationNum}`);
-                        ['A', 'B', 'C', 'D'].forEach(opt => {
-                            if (stationQuestion.options[opt]) {
-                                const btn = document.createElement('button');
-                                btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
-                                btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationQuestion.options[opt])}</span>`;
-                                
-                                btn.onclick = () => submitStudentAnswer(gameData, team, stationQuestion, opt, btn);
-                                optsContainer.appendChild(btn);
-                            }
-                        });
+                        if (optsContainer) {
+                            ['A', 'B', 'C', 'D'].forEach(opt => {
+                                if (stationQuestion.options[opt]) {
+                                    const btn = document.createElement('button');
+                                    btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
+                                    btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationQuestion.options[opt])}</span>`;
+                                    
+                                    btn.onclick = () => submitStudentAnswer(gameData, team, stationQuestion, opt, btn);
+                                    optsContainer.appendChild(btn);
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -1323,26 +1358,53 @@
             const buttons = container.querySelectorAll('button');
             buttons.forEach(b => b.disabled = true);
             
-            if (selectedOpt === stationQuestion.correctAnswer) {
+            const isCorrect = (selectedOpt === stationQuestion.correctAnswer);
+            
+            if (isCorrect) {
                 btnElement.classList.replace('border-slate-200', 'border-green-500');
                 btnElement.classList.replace('hover:bg-amber-50', 'bg-green-50');
+            } else {
+                btnElement.classList.replace('border-slate-200', 'border-red-400');
+                btnElement.classList.replace('hover:bg-amber-50', 'bg-red-50');
+            }
+            
+            setTimeout(async () => {
+                let updatedTeam = { ...team };
                 
-                showToast("Correct! Moving to next station...");
-                
-                const updatedTeams = gameData.teams.map(t => {
-                    if (t.id === team.id) {
-                        const newIndex = t.currentRouteIndex + 1;
+                if (isCorrect) {
+                    updatedTeam.stationCorrectAnswers = (updatedTeam.stationCorrectAnswers || 0) + 1;
+                    updatedTeam.stationQuestionIndex = (updatedTeam.stationQuestionIndex || 0) + 1;
+                    
+                    if (updatedTeam.stationCorrectAnswers >= gameData.qPerStation) {
+                        const newIndex = updatedTeam.currentRouteIndex + 1;
                         const isCompleted = newIndex >= gameData.numStations;
-                        return { 
-                            ...t, 
-                            currentRouteIndex: newIndex, 
-                            currentStationUnlocked: false, 
-                            completed: isCompleted,
-                            finishedAt: isCompleted ? Date.now() : (t.finishedAt || null)
-                        };
+                        
+                        updatedTeam.currentRouteIndex = newIndex;
+                        updatedTeam.currentStationUnlocked = false;
+                        updatedTeam.completed = isCompleted;
+                        updatedTeam.finishedAt = isCompleted ? Date.now() : (updatedTeam.finishedAt || null);
+                        updatedTeam.stationCorrectAnswers = 0;
+                        updatedTeam.stationWrongAnswers = 0;
+                        
+                        showToast("Station Complete! Moving to next...");
+                    } else {
+                        showToast("Correct! Next question loading...");
                     }
-                    return t;
-                });
+                } else {
+                    updatedTeam.stationWrongAnswers = (updatedTeam.stationWrongAnswers || 0) + 1;
+                    updatedTeam.stationQuestionIndex = (updatedTeam.stationQuestionIndex || 0) + 1;
+                    
+                    if (updatedTeam.stationWrongAnswers >= gameData.qPerStation) {
+                        updatedTeam.lockoutUntil = Date.now() + 60000; 
+                        updatedTeam.stationCorrectAnswers = 0; 
+                        updatedTeam.stationWrongAnswers = 0;
+                        showToast("Too many strikes! Locked out for 1 minute.", true);
+                    } else {
+                        showToast("Incorrect answer. Strike added!", true);
+                    }
+                }
+                
+                const updatedTeams = gameData.teams.map(t => t.id === team.id ? updatedTeam : t);
                 
                 try {
                     const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', studentGameId);
@@ -1351,17 +1413,7 @@
                     showToast("Error saving progress.", true);
                     buttons.forEach(b => b.disabled = false);
                 }
-            } else {
-                btnElement.classList.replace('border-slate-200', 'border-red-400');
-                btnElement.classList.replace('hover:bg-amber-50', 'bg-red-50');
-                showToast("Incorrect answer. Try again!", true);
-                
-                setTimeout(() => {
-                    btnElement.classList.replace('border-red-400', 'border-slate-200');
-                    btnElement.classList.replace('bg-red-50', 'hover:bg-amber-50');
-                    buttons.forEach(b => b.disabled = false);
-                }, 1500);
-            }
+            }, 1000);
         }
         
         function exitStudentMode() {
