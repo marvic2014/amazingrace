@@ -282,19 +282,39 @@
             <div id="student-active-race">
                 <div class="bg-amber-500 rounded-t-2xl p-6 text-center text-white shadow-md relative z-10">
                     <span id="student-station-progress" class="bg-amber-700 bg-opacity-30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3 inline-block">Station 1 of 5</span>
-                    <h3 class="text-sm font-medium uppercase tracking-wide opacity-90 mb-1">Your Next Location:</h3>
+                    <h3 class="text-sm font-medium uppercase tracking-wide opacity-90 mb-1">Location Clue:</h3>
                     <p id="student-location-hint" class="text-3xl font-black">The Library Desk</p>
                 </div>
                 
                 <div class="bg-white rounded-b-2xl shadow-xl border border-slate-200 border-t-0 p-6 sm:p-8 -mt-2 pt-8 relative z-0">
-                    <div class="mb-8">
-                        <span class="text-xs font-bold text-indigo-500 uppercase tracking-widest block mb-2">Station Challenge</span>
-                        <h4 id="student-question-text" class="text-xl font-semibold text-slate-800 whitespace-pre-wrap">Question text goes here?</h4>
-                    </div>
                     
-                    <div id="student-options-container" class="space-y-3">
-                        <!-- Options generated here -->
+                    <!-- Code Entry Section (To unlock the station) -->
+                    <div id="student-code-section" class="text-center py-6">
+                        <div class="mb-6 text-slate-600">
+                            <i class="fa-solid fa-lock text-5xl mb-4 text-slate-300"></i>
+                            <h4 class="text-xl font-bold text-slate-800 mb-2">Find the Station Code</h4>
+                            <p class="text-sm max-w-sm mx-auto">Go to the location clue above and find the hidden code to unlock this challenge.</p>
+                        </div>
+                        <form id="student-code-form" class="max-w-xs mx-auto flex gap-2">
+                            <input type="text" id="student-station-code-input" placeholder="Enter Code" required class="flex-grow px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-amber-500 outline-none uppercase font-mono text-center font-bold text-lg transition-colors">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg font-bold transition-colors">
+                                Unlock
+                            </button>
+                        </form>
                     </div>
+
+                    <!-- Question Section (Hidden until unlocked) -->
+                    <div id="student-question-section" class="hidden">
+                        <div class="mb-8">
+                            <span class="text-xs font-bold text-indigo-500 uppercase tracking-widest block mb-2"><i class="fa-solid fa-unlock text-green-500 mr-1"></i> Station Unlocked</span>
+                            <h4 id="student-question-text" class="text-xl font-semibold text-slate-800 whitespace-pre-wrap">Question text goes here?</h4>
+                        </div>
+                        
+                        <div id="student-options-container" class="space-y-3">
+                            <!-- Options generated here -->
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -472,6 +492,12 @@
             studentFinishedRace: document.getElementById('student-finished-race'),
             studentStationProgress: document.getElementById('student-station-progress'),
             studentLocationHint: document.getElementById('student-location-hint'),
+            
+            studentCodeSection: document.getElementById('student-code-section'),
+            studentCodeForm: document.getElementById('student-code-form'),
+            studentStationCodeInput: document.getElementById('student-station-code-input'),
+            
+            studentQuestionSection: document.getElementById('student-question-section'),
             studentQuestionText: document.getElementById('student-question-text'),
             studentOptionsContainer: document.getElementById('student-options-container'),
 
@@ -810,11 +836,15 @@
                     <div class="bg-indigo-100 text-indigo-800 w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                         ${i}
                     </div>
-                    <div class="w-full md:w-1/3">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Station Location</label>
-                        <input type="text" id="station-loc-${i}" placeholder="e.g. Library Desk" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <div class="w-full md:w-1/4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Location Clue</label>
+                        <input type="text" id="station-loc-${i}" placeholder="e.g. Under Oak Tree" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
-                    <div class="w-full md:w-2/3">
+                    <div class="w-full md:w-1/4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Unlock Code</label>
+                        <input type="text" id="station-code-${i}" placeholder="e.g. APPLE" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono uppercase">
+                    </div>
+                    <div class="w-full md:w-1/2">
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Question</label>
                         <select id="station-q-${i}" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                             ${questionOptionsHTML}
@@ -849,6 +879,7 @@
                     stations.push({
                         stationIndex: i,
                         locationHint: document.getElementById(`station-loc-${i}`).value.trim(),
+                        stationCode: document.getElementById(`station-code-${i}`).value.trim().toUpperCase(),
                         question: {
                             text: qData.text,
                             options: qData.options,
@@ -875,7 +906,8 @@
                         name: `Group ${i + 1}`,
                         accessCode: accessCode,
                         route: route,
-                        currentRouteIndex: 0, // Points to the first station in their specific route array
+                        currentRouteIndex: 0, 
+                        currentStationUnlocked: false, // Track if they found the physical code
                         completed: false
                     });
                 }
@@ -1103,21 +1135,59 @@
             ui.studentStationProgress.textContent = `Station ${team.currentRouteIndex + 1} of ${gameData.numStations}`;
             
             const stationData = gameData.stations.find(s => s.stationIndex === currentStationNum);
-            
             ui.studentLocationHint.textContent = stationData.locationHint;
-            ui.studentQuestionText.textContent = stationData.question.text;
             
-            ui.studentOptionsContainer.innerHTML = '';
-            ['A', 'B', 'C', 'D'].forEach(opt => {
-                if(stationData.question.options[opt]) {
-                    const btn = document.createElement('button');
-                    btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
-                    btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationData.question.options[opt])}</span>`;
+            if (!team.currentStationUnlocked) {
+                // Show Code Entry, Hide Question
+                ui.studentCodeSection.classList.remove('hidden');
+                ui.studentQuestionSection.classList.add('hidden');
+                ui.studentStationCodeInput.value = '';
+                
+                // Bind form submission to unlock logic
+                ui.studentCodeForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const enteredCode = ui.studentStationCodeInput.value.trim().toUpperCase();
+                    const submitBtn = ui.studentCodeForm.querySelector('button');
                     
-                    btn.onclick = () => submitStudentAnswer(gameData, team, stationData, opt, btn);
-                    ui.studentOptionsContainer.appendChild(btn);
-                }
-            });
+                    if (enteredCode === stationData.stationCode) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        
+                        // Update DB to unlock the station
+                        const updatedTeams = gameData.teams.map(t => t.id === team.id ? { ...t, currentStationUnlocked: true } : t);
+                        try {
+                            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', studentGameId);
+                            await updateDoc(gameRef, { teams: updatedTeams });
+                            showToast("Station Unlocked!");
+                        } catch(err) {
+                            showToast("Error unlocking station.", true);
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = 'Unlock';
+                        }
+                    } else {
+                        showToast("Incorrect Code! Keep searching.", true);
+                        ui.studentStationCodeInput.value = '';
+                    }
+                };
+            } else {
+                // Show Question, Hide Code Entry
+                ui.studentCodeSection.classList.add('hidden');
+                ui.studentQuestionSection.classList.remove('hidden');
+                ui.studentQuestionText.textContent = stationData.question.text;
+                
+                ui.studentOptionsContainer.innerHTML = '';
+                ['A', 'B', 'C', 'D'].forEach(opt => {
+                    if(stationData.question.options[opt]) {
+                        const btn = document.createElement('button');
+                        btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
+                        btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationData.question.options[opt])}</span>`;
+                        
+                        btn.onclick = () => submitStudentAnswer(gameData, team, stationData, opt, btn);
+                        ui.studentOptionsContainer.appendChild(btn);
+                    }
+                });
+            }
         }
         
         async function submitStudentAnswer(gameData, team, stationData, selectedOpt, btnElement) {
@@ -1134,7 +1204,8 @@
                 const updatedTeams = gameData.teams.map(t => {
                     if (t.id === team.id) {
                         const newIndex = t.currentRouteIndex + 1;
-                        return { ...t, currentRouteIndex: newIndex, completed: newIndex >= gameData.numStations };
+                        // Important: Relock the next station and advance the index
+                        return { ...t, currentRouteIndex: newIndex, currentStationUnlocked: false, completed: newIndex >= gameData.numStations };
                     }
                     return t;
                 });
