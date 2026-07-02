@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Question Bank</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
+        
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-indigo-600 text-white shadow-md hidden" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-layer-group text-2xl mr-3"></i>
+                    <span class="font-bold text-xl tracking-tight">QuestionBank</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="user-email-display" class="text-sm font-medium opacity-90 hidden sm:block"></span>
+                    <button id="logout-btn" class="bg-indigo-700 hover:bg-indigo-800 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col relative">
+
+        <!-- 1. Landing View (Replaces Auth View) -->
+        <div id="landing-view" class="flex-grow flex flex-col md:flex-row items-center justify-center p-4 gap-8 max-w-5xl mx-auto w-full">
+            
+            <!-- Student Join Card -->
+            <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 relative overflow-hidden flex-1">
+                <div class="absolute top-0 left-0 w-full h-2 bg-amber-500"></div>
+                <div class="text-center mb-6">
+                    <div class="bg-amber-100 text-amber-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-users-line text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900">Student Join</h2>
+                    <p class="text-slate-500 mt-2 text-sm">Enter your codes to join a live race</p>
+                </div>
+                <form id="student-join-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Session ID</label>
+                        <input type="text" id="student-session-id" placeholder="e.g. A1B2C" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none uppercase font-mono tracking-widest">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Group Code</label>
+                        <input type="text" id="student-group-code" placeholder="e.g. X9Y8" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none uppercase font-mono tracking-widest">
+                    </div>
+                    <button type="submit" id="student-join-btn" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-lg transition-colors mt-2">
+                        Join Race
+                    </button>
+                </form>
+            </div>
+
+            <!-- Teacher Login Card -->
+            <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 relative overflow-hidden flex-1">
+                <div class="absolute top-0 left-0 w-full h-2 bg-indigo-600"></div>
+                <div class="text-center mb-6">
+                    <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-chalkboard-user text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900" id="auth-title">Teacher Login</h2>
+                    <p class="text-slate-500 mt-2 text-sm" id="auth-subtitle">Sign in to manage your collections</p>
+                </div>
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                        <input type="email" id="auth-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input type="password" id="auth-password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <button type="submit" id="auth-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors mt-2 flex justify-center items-center gap-2">
+                        <span>Sign In</span>
+                    </button>
+                </form>
+                <div class="mt-4 text-center">
+                    <button id="auth-toggle-btn" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                        Need an account? Register here
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Dashboard View (Collections List) -->
+        <div id="dashboard-view" class="hidden flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">My Collections</h1>
+                    <p class="text-slate-500 mt-1">Manage your question banks</p>
+                </div>
+                <button id="open-new-collection-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> New Collection
+                </button>
+            </div>
+
+            <!-- Collections Grid -->
+            <div id="collections-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamically populated -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="collections-empty" class="hidden flex-col items-center justify-center py-20 text-center">
+                <div class="bg-slate-100 text-slate-400 w-20 h-20 rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-folder-open text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-slate-700">No collections yet</h3>
+                <p class="text-slate-500 mt-2 max-w-sm">Create your first collection to start adding and organizing questions.</p>
+            </div>
+        </div>
+
+        <!-- 3. Collection Detail View (Questions List) -->
+        <div id="collection-view" class="hidden flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-6 flex items-center gap-2 text-sm font-medium text-slate-500">
+                <button id="back-to-dashboard" class="hover:text-indigo-600 transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-left"></i> Dashboard
+                </button>
+                <span>/</span>
+                <span id="current-collection-name-crumb" class="text-slate-800">...</span>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 id="current-collection-title" class="text-3xl font-bold text-slate-900">Collection Title</h1>
+                    <p class="text-slate-500 mt-1" id="question-count">0 questions</p>
+                </div>
+                <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full md:w-auto">
+                    <!-- Search Bar -->
+                    <div class="relative flex-grow sm:flex-grow-0">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-slate-400"></i>
+                        </div>
+                        <input type="text" id="search-questions-input" placeholder="Search questions..." class="w-full sm:w-64 pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all">
+                    </div>
+                    
+                    <button id="open-new-question-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add
+                    </button>
+                    <button id="trigger-csv-upload" class="bg-white border-2 border-slate-200 hover:border-indigo-600 hover:text-indigo-600 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-import"></i> Import CSV
+                    </button>
+                    <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                    <button id="open-game-setup-btn" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-flag-checkered"></i> Host Race
+                    </button>
+                </div>
+            </div>
+
+            <!-- Questions List -->
+            <div id="questions-list" class="space-y-4">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Empty State for Questions -->
+            <div id="questions-empty" class="hidden flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-slate-200 border-dashed">
+                <i class="fa-solid fa-clipboard-question text-4xl text-slate-300 mb-4"></i>
+                <h3 class="text-lg font-semibold text-slate-700">This collection is empty</h3>
+                <p class="text-slate-500 mt-1 mb-4">Add questions manually or import a CSV file.</p>
+                <div class="text-xs text-slate-400 bg-slate-50 p-3 rounded-lg text-left max-w-md mx-auto">
+                    <strong>CSV Format required:</strong><br>
+                    Question Text, Option A, Option B, Option C, Option D, Correct Answer (A/B/C/D)<br>
+                    <em>Note: Do not use commas inside the question text or options for this basic import.</em>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Game Setup View -->
+        <div id="game-setup-view" class="hidden flex-grow w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-6 flex items-center gap-2 text-sm font-medium text-slate-500">
+                <button id="setup-back-btn" class="hover:text-indigo-600 transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Collection
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                <div class="flex items-center gap-4 mb-8 border-b border-slate-100 pb-6">
+                    <div class="bg-amber-100 text-amber-600 w-12 h-12 rounded-full flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-flag-checkered"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900">Setup Amazing Race</h1>
+                        <p class="text-slate-500">Configure your live game session</p>
+                    </div>
+                </div>
+
+                <form id="game-setup-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Number of Groups (Teams)</label>
+                            <input type="number" id="setup-num-groups" min="1" max="20" value="4" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Number of Stations</label>
+                            <input type="number" id="setup-num-stations" min="1" max="50" value="3" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-lg">
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-lg text-slate-800 mb-4 border-b border-slate-100 pb-2">Station Configuration</h3>
+                    <p class="text-sm text-slate-500 mb-4">Assign a physical location and a specific question for each station.</p>
+                    
+                    <div id="setup-stations-container" class="space-y-4 mb-8">
+                        <!-- Stations generated dynamically -->
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" id="start-game-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-8 py-3 rounded-xl transition-colors shadow-md flex items-center gap-2 text-lg">
+                            <i class="fa-solid fa-play"></i> Launch Game Session
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 5. Live Game Dashboard -->
+        <div id="game-live-view" class="hidden flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-col h-full">
+            <div class="bg-slate-900 rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row mb-8 text-white relative">
+                <div class="p-8 md:w-2/3 flex flex-col justify-center">
+                    <div class="flex items-center gap-3 mb-2 text-amber-400 font-bold tracking-widest uppercase text-sm">
+                        <span class="animate-pulse w-2 h-2 rounded-full bg-red-500 block"></span> Live Session
+                    </div>
+                    <h1 class="text-3xl font-bold mb-4">Amazing Race Dashboard</h1>
+                    <p class="text-slate-400 text-lg mb-6">Hand out the unique <strong class="text-white">Group Codes</strong> below to your students. Each group has been assigned a staggered starting location.</p>
+                    <button id="end-session-btn" class="self-start border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-stop"></i> End Session
+                    </button>
+                </div>
+                <div class="md:w-1/3 bg-slate-800 p-8 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-700 text-center">
+                    <span class="text-slate-400 font-medium mb-2 uppercase tracking-wide">Session ID</span>
+                    <span id="live-game-code" class="text-4xl font-black text-amber-400 tracking-widest font-mono select-all mb-2">-----</span>
+                    <span class="text-xs text-slate-500">Master code for this event</span>
+                </div>
+            </div>
+
+            <!-- Teams Grid -->
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-slate-800">Team Progress & Codes</h3>
+                <span id="live-station-count" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-bold text-sm">Total Stations: 0</span>
+            </div>
+            
+            <div id="live-teams-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Teams injected dynamically -->
+            </div>
+        </div>
+
+        <!-- 6. Student Game View -->
+        <div id="student-game-view" class="hidden flex-grow w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-col h-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="student-team-name" class="text-2xl font-black text-slate-800">Team Name</h2>
+                <button id="student-leave-btn" class="text-sm font-bold text-slate-400 hover:text-red-500 transition-colors">Leave Game</button>
+            </div>
+
+            <!-- Active Race Container -->
+            <div id="student-active-race">
+                <div class="bg-amber-500 rounded-t-2xl p-6 text-center text-white shadow-md relative z-10">
+                    <span id="student-station-progress" class="bg-amber-700 bg-opacity-30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3 inline-block">Station 1 of 5</span>
+                    <h3 class="text-sm font-medium uppercase tracking-wide opacity-90 mb-1">Your Next Location:</h3>
+                    <p id="student-location-hint" class="text-3xl font-black">The Library Desk</p>
+                </div>
+                
+                <div class="bg-white rounded-b-2xl shadow-xl border border-slate-200 border-t-0 p-6 sm:p-8 -mt-2 pt-8 relative z-0">
+                    <div class="mb-8">
+                        <span class="text-xs font-bold text-indigo-500 uppercase tracking-widest block mb-2">Station Challenge</span>
+                        <h4 id="student-question-text" class="text-xl font-semibold text-slate-800 whitespace-pre-wrap">Question text goes here?</h4>
+                    </div>
+                    
+                    <div id="student-options-container" class="space-y-3">
+                        <!-- Options generated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finished Race Container -->
+            <div id="student-finished-race" class="hidden bg-white rounded-2xl shadow-xl border border-slate-200 p-12 text-center">
+                <div class="text-6xl text-green-500 mb-6 animate-bounce">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h2 class="text-4xl font-black text-slate-800 mb-4">Race Completed!</h2>
+                <p class="text-lg text-slate-500">You have successfully finished all the stations. Head back to your teacher!</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals -->
+    <!-- New Collection Modal -->
+    <div id="modal-new-collection" class="fixed inset-0 bg-slate-900/50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Create Collection</h3>
+                <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="form-new-collection" class="p-6">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Collection Name</label>
+                    <input type="text" id="input-collection-name" required placeholder="e.g. Grade 10 Mathematics" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" class="close-modal px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Question Modal -->
+    <div id="modal-new-question" class="fixed inset-0 bg-slate-900/50 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden my-8">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Add Question</h3>
+                <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="form-new-question" class="p-6">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Question Text</label>
+                    <textarea id="input-q-text" required rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="What is the capital of France?"></textarea>
+                </div>
+                
+                <div class="space-y-3 mb-4">
+                    <label class="block text-sm font-medium text-slate-700">Options</label>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center font-bold text-slate-400">A</span>
+                        <input type="text" id="input-q-optA" required class="flex-grow px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center font-bold text-slate-400">B</span>
+                        <input type="text" id="input-q-optB" required class="flex-grow px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center font-bold text-slate-400">C</span>
+                        <input type="text" id="input-q-optC" required class="flex-grow px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center font-bold text-slate-400">D</span>
+                        <input type="text" id="input-q-optD" required class="flex-grow px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Correct Answer</label>
+                    <select id="input-q-correct" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" class="close-modal px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save Question</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Firebase & Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Application State ---
+        let app, auth, db, appId;
+        let currentUser = null;
+        let isLoginMode = true; // Auth form toggle
+        
+        // Data stores
+        let collections = [];
+        let allQuestions = [];
+        let currentCollectionId = null;
+        let editingQuestionId = null; 
+        let searchQuery = ""; 
+        
+        // Live Game states
+        let currentGameId = null;
+        
+        // Student states
+        let isStudentMode = false;
+        let studentGameId = null;
+        let studentTeamId = null;
+        
+        // Listeners for cleanup
+        let unsubscribeCollections = null;
+        let unsubscribeQuestions = null;
+        let unsubscribeLiveGame = null;
+        let unsubscribeStudentGame = null;
+
+        // --- UI Elements ---
+        const ui = {
+            navbar: document.getElementById('navbar'),
+            userEmailDisplay: document.getElementById('user-email-display'),
+            logoutBtn: document.getElementById('logout-btn'),
+            
+            landingView: document.getElementById('landing-view'),
+            
+            // Teacher Auth
+            authForm: document.getElementById('auth-form'),
+            authTitle: document.getElementById('auth-title'),
+            authSubtitle: document.getElementById('auth-subtitle'),
+            authSubmitBtn: document.getElementById('auth-submit-btn'),
+            authToggleBtn: document.getElementById('auth-toggle-btn'),
+            authEmail: document.getElementById('auth-email'),
+            authPassword: document.getElementById('auth-password'),
+            
+            // Student Join
+            studentJoinForm: document.getElementById('student-join-form'),
+            studentSessionId: document.getElementById('student-session-id'),
+            studentGroupCode: document.getElementById('student-group-code'),
+            studentJoinBtn: document.getElementById('student-join-btn'),
+            
+            dashboardView: document.getElementById('dashboard-view'),
+            collectionsGrid: document.getElementById('collections-grid'),
+            collectionsEmpty: document.getElementById('collections-empty'),
+            
+            collectionView: document.getElementById('collection-view'),
+            backToDashboardBtn: document.getElementById('back-to-dashboard'),
+            currentCollectionTitle: document.getElementById('current-collection-title'),
+            currentCollectionNameCrumb: document.getElementById('current-collection-name-crumb'),
+            questionCount: document.getElementById('question-count'),
+            questionsList: document.getElementById('questions-list'),
+            questionsEmpty: document.getElementById('questions-empty'),
+            openGameSetupBtn: document.getElementById('open-game-setup-btn'),
+            
+            gameSetupView: document.getElementById('game-setup-view'),
+            setupBackBtn: document.getElementById('setup-back-btn'),
+            gameSetupForm: document.getElementById('game-setup-form'),
+            setupNumGroups: document.getElementById('setup-num-groups'),
+            setupNumStations: document.getElementById('setup-num-stations'),
+            setupStationsContainer: document.getElementById('setup-stations-container'),
+            
+            gameLiveView: document.getElementById('game-live-view'),
+            liveGameCode: document.getElementById('live-game-code'),
+            liveStationCount: document.getElementById('live-station-count'),
+            liveTeamsGrid: document.getElementById('live-teams-grid'),
+            endSessionBtn: document.getElementById('end-session-btn'),
+            
+            // Student Game View
+            studentGameView: document.getElementById('student-game-view'),
+            studentTeamName: document.getElementById('student-team-name'),
+            studentLeaveBtn: document.getElementById('student-leave-btn'),
+            studentActiveRace: document.getElementById('student-active-race'),
+            studentFinishedRace: document.getElementById('student-finished-race'),
+            studentStationProgress: document.getElementById('student-station-progress'),
+            studentLocationHint: document.getElementById('student-location-hint'),
+            studentQuestionText: document.getElementById('student-question-text'),
+            studentOptionsContainer: document.getElementById('student-options-container'),
+
+            modalNewCollection: document.getElementById('modal-new-collection'),
+            formNewCollection: document.getElementById('form-new-collection'),
+            inputCollectionName: document.getElementById('input-collection-name'),
+            
+            modalNewQuestion: document.getElementById('modal-new-question'),
+            formNewQuestion: document.getElementById('form-new-question'),
+            
+            searchInput: document.getElementById('search-questions-input'),
+            csvFileInput: document.getElementById('csv-file-input'),
+            triggerCsvUpload: document.getElementById('trigger-csv-upload'),
+        };
+
+        // --- Utility: Toast Notifications ---
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast-enter flex items-center p-4 rounded-lg shadow-lg border-l-4 ${isError ? 'bg-red-50 border-red-500 text-red-800' : 'bg-white border-green-500 text-slate-800'}`;
+            
+            const icon = isError ? '<i class="fa-solid fa-circle-exclamation text-red-500 mr-3"></i>' : '<i class="fa-solid fa-circle-check text-green-500 mr-3"></i>';
+            toast.innerHTML = `${icon} <span class="font-medium text-sm">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // --- Initialization ---
+        async function init() {
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCe6VUrpua-lNQNuJoWMoyJeLz-Mk-JgcY",
+                    authDomain: "amazing-race-271fd.firebaseapp.com",
+                    projectId: "amazing-race-271fd",
+                    storageBucket: "amazing-race-271fd.firebasestorage.app",
+                    messagingSenderId: "1000825662986",
+                    appId: "1:1000825662986:web:0475605681e06fd46f39f3",
+                    measurementId: "G-JETRMFCM0M"
+                };
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                // FIX: Hardcode the app ID so it never changes between sessions or windows
+                appId = 'my-question-bank-app';
+
+                // Attempt auto-login (will fail gracefully with custom configs)
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } 
+                } catch (tokenError) {
+                    console.log("Environment token mismatch expected with custom Firebase config. Proceeding to manual login.");
+                }
+
+                // Setup Auth Listener
+                onAuthStateChanged(auth, handleAuthStateChanged);
+
+                setupEventListeners();
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                showToast("Failed to initialize database connection.", true);
+            }
+        }
+
+        // --- Auth Logic ---
+        function handleAuthStateChanged(user) {
+            currentUser = user;
+            if (user && !user.isAnonymous) {
+                // Logged in as Teacher
+                isStudentMode = false;
+                ui.landingView.classList.add('hidden');
+                ui.studentGameView.classList.add('hidden');
+                ui.navbar.classList.remove('hidden');
+                ui.userEmailDisplay.textContent = user.email || 'Teacher';
+                
+                showDashboard();
+                fetchData(); 
+            } else if (user && user.isAnonymous && isStudentMode) {
+                // Keep Student in Game View
+                ui.landingView.classList.add('hidden');
+                ui.navbar.classList.add('hidden');
+                ui.studentGameView.classList.remove('hidden');
+            } else {
+                // Signed out or just idling anonymously on landing page
+                isStudentMode = false;
+                ui.navbar.classList.add('hidden');
+                ui.dashboardView.classList.add('hidden');
+                ui.collectionView.classList.add('hidden');
+                ui.gameSetupView.classList.add('hidden');
+                ui.gameLiveView.classList.add('hidden');
+                ui.studentGameView.classList.add('hidden');
+                ui.landingView.classList.remove('hidden');
+                
+                // Cleanup listeners
+                if (unsubscribeCollections) unsubscribeCollections();
+                if (unsubscribeQuestions) unsubscribeQuestions();
+                if (unsubscribeLiveGame) unsubscribeLiveGame();
+                if (unsubscribeStudentGame) unsubscribeStudentGame();
+                collections = [];
+                allQuestions = [];
+            }
+        }
+
+        // --- Data Fetching (Following Strict Firestore Rules) ---
+        function fetchData() {
+            if (!currentUser) return; // Guard clause
+
+            // 1. Fetch Collections (Private Data Path)
+            const collectionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'collections');
+            unsubscribeCollections = onSnapshot(collectionsRef, (snapshot) => {
+                collections = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort in memory (Rule 2 workaround)
+                collections.sort((a, b) => b.createdAt - a.createdAt);
+                
+                if (currentCollectionId === null) {
+                    renderCollections();
+                } else {
+                    // Update header if we are currently viewing a collection that just got renamed (if edit was supported)
+                    updateCollectionHeader();
+                }
+            }, (error) => {
+                console.error("Error fetching collections:", error);
+                showToast("Failed to load collections.", true);
+            });
+
+            // 2. Fetch ALL Questions (Private Data Path - Rule 2: No complex queries, fetch all, filter in JS)
+            const questionsRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'questions');
+            unsubscribeQuestions = onSnapshot(questionsRef, (snapshot) => {
+                allQuestions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort in memory
+                allQuestions.sort((a, b) => b.createdAt - a.createdAt);
+                
+                if (currentCollectionId !== null) {
+                    renderQuestions();
+                }
+            }, (error) => {
+                console.error("Error fetching questions:", error);
+                showToast("Failed to load questions.", true);
+            });
+        }
+
+        // --- Rendering Logic ---
+        function showDashboard() {
+            currentCollectionId = null;
+            if (unsubscribeLiveGame) unsubscribeLiveGame();
+            
+            ui.collectionView.classList.add('hidden');
+            ui.gameSetupView.classList.add('hidden');
+            ui.gameLiveView.classList.add('hidden');
+            ui.dashboardView.classList.remove('hidden');
+            renderCollections();
+        }
+
+        function renderCollections() {
+            ui.collectionsGrid.innerHTML = '';
+            
+            if (collections.length === 0) {
+                ui.collectionsEmpty.classList.remove('hidden');
+                ui.collectionsGrid.classList.add('hidden');
+                return;
+            }
+            
+            ui.collectionsEmpty.classList.add('hidden');
+            ui.collectionsGrid.classList.remove('hidden');
+
+            collections.forEach(col => {
+                const count = allQuestions.filter(q => q.collectionId === col.id).length;
+                
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-shadow cursor-pointer flex flex-col justify-between group";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="bg-indigo-50 text-indigo-600 w-10 h-10 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-folder"></i>
+                            </div>
+                            <button class="delete-col-btn text-slate-300 hover:text-red-500 transition-colors p-2" data-id="${col.id}" title="Delete Collection">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">${escapeHTML(col.name)}</h3>
+                        <p class="text-sm text-slate-500">${count} Question${count !== 1 ? 's' : ''}</p>
+                    </div>
+                `;
+                
+                // Event delegation for card click
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.delete-col-btn')) {
+                        deleteCollection(col.id);
+                    } else {
+                        openCollection(col.id);
+                    }
+                });
+                
+                ui.collectionsGrid.appendChild(card);
+            });
+        }
+
+        function openCollection(id) {
+            currentCollectionId = id;
+            ui.dashboardView.classList.add('hidden');
+            ui.gameSetupView.classList.add('hidden');
+            ui.collectionView.classList.remove('hidden');
+            updateCollectionHeader();
+            renderQuestions();
+        }
+        
+        function updateCollectionHeader() {
+            const col = collections.find(c => c.id === currentCollectionId);
+            if (col) {
+                ui.currentCollectionTitle.textContent = col.name;
+                ui.currentCollectionNameCrumb.textContent = col.name;
+            }
+        }
+
+        function renderQuestions() {
+            ui.questionsList.innerHTML = '';
+            
+            // Filter questions in JS (Rule 2 compliance) + Search Filter
+            let collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
+            
+            if (searchQuery) {
+                const lowerQuery = searchQuery.toLowerCase();
+                collectionQuestions = collectionQuestions.filter(q => 
+                    q.text.toLowerCase().includes(lowerQuery) || 
+                    (q.options && Object.values(q.options).some(opt => opt.toLowerCase().includes(lowerQuery)))
+                );
+            }
+
+            ui.questionCount.textContent = `${collectionQuestions.length} question${collectionQuestions.length !== 1 ? 's' : ''}`;
+
+            if (collectionQuestions.length === 0) {
+                ui.questionsEmpty.classList.remove('hidden');
+                ui.questionsList.classList.add('hidden');
+                return;
+            }
+
+            ui.questionsEmpty.classList.add('hidden');
+            ui.questionsList.classList.remove('hidden');
+
+            collectionQuestions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-indigo-300 transition-colors relative";
+                
+                let optionsHTML = '';
+                if (q.options) {
+                    optionsHTML = `
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                            ${['A', 'B', 'C', 'D'].map(opt => `
+                                <div class="flex items-center p-3 rounded-lg border ${q.correctAnswer === opt ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'}">
+                                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${q.correctAnswer === opt ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}">${opt}</span>
+                                    <span class="text-sm ${q.correctAnswer === opt ? 'text-green-800 font-medium' : 'text-slate-600'}">${escapeHTML(q.options[opt])}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="absolute top-4 right-4 flex gap-2">
+                         <button class="edit-q-btn text-slate-300 hover:text-indigo-500 p-2 transition-colors" data-id="${q.id}" title="Edit Question">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                         <button class="delete-q-btn text-slate-300 hover:text-red-500 p-2 transition-colors" data-id="${q.id}" title="Delete Question">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="pr-20">
+                        <span class="text-xs font-bold text-indigo-500 mb-1 block">Q${collectionQuestions.length - index}</span>
+                        <h4 class="text-lg font-semibold text-slate-800 whitespace-pre-wrap">${escapeHTML(q.text)}</h4>
+                    </div>
+                    ${optionsHTML}
+                `;
+                
+                card.querySelector('.edit-q-btn').addEventListener('click', () => openEditQuestionModal(q));
+                card.querySelector('.delete-q-btn').addEventListener('click', () => deleteQuestion(q.id));
+                ui.questionsList.appendChild(card);
+            });
+        }
+        
+        function openEditQuestionModal(q) {
+            editingQuestionId = q.id;
+            ui.modalNewQuestion.querySelector('h3').textContent = 'Edit Question';
+            ui.formNewQuestion.querySelector('button[type="submit"]').textContent = 'Update Question';
+            
+            document.getElementById('input-q-text').value = q.text;
+            document.getElementById('input-q-optA').value = q.options.A;
+            document.getElementById('input-q-optB').value = q.options.B;
+            document.getElementById('input-q-optC').value = q.options.C;
+            document.getElementById('input-q-optD').value = q.options.D;
+            document.getElementById('input-q-correct').value = q.correctAnswer;
+            
+            ui.modalNewQuestion.classList.remove('hidden');
+        }
+
+        // --- Live Game Logic ---
+        
+        function openGameSetup() {
+            const collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
+            if (collectionQuestions.length === 0) {
+                showToast("Cannot start a race. This collection has no questions.", true);
+                return;
+            }
+            
+            ui.collectionView.classList.add('hidden');
+            ui.gameSetupView.classList.remove('hidden');
+            
+            // Reset and render initial stations
+            ui.setupNumStations.value = 3;
+            ui.setupNumGroups.value = 4;
+            renderSetupStations();
+        }
+
+        function renderSetupStations() {
+            const numStations = parseInt(ui.setupNumStations.value) || 1;
+            const collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
+            
+            // Create options HTML for dropdowns
+            const questionOptionsHTML = collectionQuestions.map(q => 
+                `<option value="${q.id}">${escapeHTML(q.text.substring(0, 50))}${q.text.length > 50 ? '...' : ''}</option>`
+            ).join('');
+
+            ui.setupStationsContainer.innerHTML = '';
+            
+            for (let i = 1; i <= numStations; i++) {
+                const row = document.createElement('div');
+                row.className = "bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center";
+                row.innerHTML = `
+                    <div class="bg-indigo-100 text-indigo-800 w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                        ${i}
+                    </div>
+                    <div class="w-full md:w-1/3">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Station Location</label>
+                        <input type="text" id="station-loc-${i}" placeholder="e.g. Library Desk" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div class="w-full md:w-2/3">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Question</label>
+                        <select id="station-q-${i}" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            ${questionOptionsHTML}
+                        </select>
+                    </div>
+                `;
+                ui.setupStationsContainer.appendChild(row);
+            }
+        }
+
+        async function launchLiveGame(e) {
+            e.preventDefault();
+            if (!currentUser || !currentCollectionId) return;
+
+            const submitBtn = document.getElementById('start-game-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+
+            try {
+                const numGroups = parseInt(ui.setupNumGroups.value);
+                const numStations = parseInt(ui.setupNumStations.value);
+                
+                // Fetch the actual questions to embed in the public game doc
+                const collectionQuestions = allQuestions.filter(q => q.collectionId === currentCollectionId);
+                
+                // Build stations array with embedded question data
+                const stations = [];
+                for (let i = 1; i <= numStations; i++) {
+                    const qId = document.getElementById(`station-q-${i}`).value;
+                    const qData = collectionQuestions.find(q => q.id === qId);
+                    
+                    stations.push({
+                        stationIndex: i,
+                        locationHint: document.getElementById(`station-loc-${i}`).value.trim(),
+                        question: {
+                            text: qData.text,
+                            options: qData.options,
+                            correctAnswer: qData.correctAnswer
+                        }
+                    });
+                }
+                
+                // Build initial teams array with staggered routes and unique codes
+                const teams = [];
+                for (let i = 0; i < numGroups; i++) {
+                    // Generate Staggered Route (e.g. if 4 stations, Group 2 route: [2, 3, 4, 1])
+                    const route = [];
+                    let startIdx = i % numStations; 
+                    for(let j = 0; j < numStations; j++) {
+                        route.push(((startIdx + j) % numStations) + 1); // 1-indexed station numbers
+                    }
+
+                    // Generate a unique 4-character code for the group
+                    const accessCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+                    teams.push({
+                        id: i + 1,
+                        name: `Group ${i + 1}`,
+                        accessCode: accessCode,
+                        route: route,
+                        currentRouteIndex: 0, // Points to the first station in their specific route array
+                        completed: false
+                    });
+                }
+
+                // Generate random 5-char code for the overall session
+                const gameCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+
+                // Save to PUBLIC path so students can eventually access it
+                const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+                const newGameDoc = await addDoc(gamesRef, {
+                    hostId: currentUser.uid,
+                    collectionId: currentCollectionId,
+                    gameCode: gameCode,
+                    numGroups: numGroups,
+                    numStations: numStations,
+                    stations: stations,
+                    teams: teams,
+                    status: 'active',
+                    createdAt: Date.now()
+                });
+
+                currentGameId = newGameDoc.id;
+                
+                // Transition to live view
+                ui.gameSetupView.classList.add('hidden');
+                ui.gameLiveView.classList.remove('hidden');
+                
+                // Set up live listener
+                listenToLiveGame();
+                
+                showToast("Live session launched!");
+            } catch (error) {
+                console.error("Error launching game:", error);
+                showToast("Failed to launch game.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-play"></i> Launch Game Session';
+            }
+        }
+
+        function listenToLiveGame() {
+            if (unsubscribeLiveGame) unsubscribeLiveGame();
+            if (!currentGameId) return;
+
+            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
+            
+            unsubscribeLiveGame = onSnapshot(gameRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const gameData = docSnap.data();
+                    renderLiveDashboard(gameData);
+                } else {
+                    showToast("Game session closed or not found.", true);
+                    openCollection(currentCollectionId);
+                }
+            }, (error) => {
+                console.error("Error listening to game:", error);
+                showToast("Lost connection to live game.", true);
+            });
+        }
+
+        function renderLiveDashboard(gameData) {
+            ui.liveGameCode.textContent = gameData.gameCode;
+            ui.liveStationCount.textContent = `Total Stations: ${gameData.numStations}`;
+            
+            ui.liveTeamsGrid.innerHTML = '';
+            
+            gameData.teams.forEach(team => {
+                // Calculate progress based on their route index
+                const progressPct = team.completed ? 100 : (team.currentRouteIndex / gameData.numStations) * 100;
+                
+                // Determine the physical station number they are currently at
+                const currentStationNum = team.completed ? 'Done' : team.route[team.currentRouteIndex];
+                
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-xl p-6 shadow-sm relative overflow-hidden flex flex-col";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <h4 class="font-bold text-xl text-slate-800">${escapeHTML(team.name)}</h4>
+                        ${team.completed 
+                            ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase"><i class="fa-solid fa-check"></i> Finished</span>` 
+                            : `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold uppercase">Racing</span>`
+                        }
+                    </div>
+                    
+                    <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 mb-4 text-center">
+                        <span class="text-xs text-slate-500 uppercase tracking-wide block mb-1">Group Code</span>
+                        <span class="text-2xl font-mono font-black text-slate-800 tracking-widest">${team.accessCode}</span>
+                    </div>
+                    
+                    <div class="mb-2 mt-auto">
+                        <span class="text-sm font-medium text-slate-500 uppercase tracking-wide">Current Station</span>
+                        <div class="text-3xl font-black text-indigo-600 mt-1">${currentStationNum} <span class="text-lg text-slate-400 font-medium">/ ${gameData.numStations}</span></div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 mt-4">
+                        <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: ${progressPct}%"></div>
+                    </div>
+                `;
+                ui.liveTeamsGrid.appendChild(card);
+            });
+        }
+
+        async function endLiveGame() {
+            if (!currentGameId) return;
+            
+            if (confirm("Are you sure you want to end this live session? Students will be disconnected.")) {
+                try {
+                    const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
+                    await updateDoc(gameRef, { status: 'ended' });
+                    
+                    if (unsubscribeLiveGame) unsubscribeLiveGame();
+                    currentGameId = null;
+                    
+                    showToast("Session ended successfully.");
+                    openCollection(currentCollectionId);
+                } catch (error) {
+                    console.error("Error ending game:", error);
+                    showToast("Failed to end session.", true);
+                }
+            }
+        }
+        
+        // --- Student Game Flow Logic ---
+        async function handleStudentJoin(e) {
+            e.preventDefault();
+            const sessionCode = ui.studentSessionId.value.trim().toUpperCase();
+            const groupCode = ui.studentGroupCode.value.trim().toUpperCase();
+            
+            ui.studentJoinBtn.disabled = true;
+            ui.studentJoinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Joining...';
+
+            try {
+                // Set flag BEFORE auth changes so the listener knows we are a student
+                isStudentMode = true; 
+
+                // Ensure the user is strictly an anonymous student (logout teacher if testing in same browser)
+                if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                    await signOut(auth);
+                }
+
+                // Authenticate anonymously if not logged in
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                }
+
+                // Query all games (Following Rule 2: Fetch all, filter in JS)
+                const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+                const snapshot = await getDocs(gamesRef);
+                
+                let foundGame = null;
+                let foundTeam = null;
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    if (data.gameCode === sessionCode && data.status === 'active') {
+                        const team = data.teams.find(t => t.accessCode === groupCode);
+                        if (team) {
+                            foundGame = { id: docSnap.id, ...data };
+                            foundTeam = team;
+                        }
+                    }
+                });
+
+                if (foundGame && foundTeam) {
+                    studentGameId = foundGame.id;
+                    studentTeamId = foundTeam.id;
+                    isStudentMode = true;
+                    
+                    ui.landingView.classList.add('hidden');
+                    ui.studentGameView.classList.remove('hidden');
+                    
+                    listenToStudentGame();
+                    showToast("Successfully joined the race!");
+                } else {
+                    showToast("Invalid Session ID or Group Code.", true);
+                }
+            } catch (error) {
+                console.error("Join Error:", error);
+                showToast("Failed to connect to session.", true);
+            } finally {
+                ui.studentJoinBtn.disabled = false;
+                ui.studentJoinBtn.innerHTML = 'Join Race';
+            }
+        }
+        
+        function listenToStudentGame() {
+            if (unsubscribeStudentGame) unsubscribeStudentGame();
+            if (!studentGameId) return;
+
+            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', studentGameId);
+            
+            unsubscribeStudentGame = onSnapshot(gameRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const gameData = docSnap.data();
+                    if (gameData.status !== 'active') {
+                        showToast("The teacher has ended this session.", true);
+                        exitStudentMode();
+                        return;
+                    }
+                    renderStudentDashboard(gameData);
+                } else {
+                    showToast("Session not found.", true);
+                    exitStudentMode();
+                }
+            });
+        }
+        
+        function renderStudentDashboard(gameData) {
+            const team = gameData.teams.find(t => t.id === studentTeamId);
+            if (!team) return;
+            
+            ui.studentTeamName.textContent = team.name;
+            
+            if (team.completed) {
+                ui.studentActiveRace.classList.add('hidden');
+                ui.studentFinishedRace.classList.remove('hidden');
+                return;
+            }
+            
+            ui.studentActiveRace.classList.remove('hidden');
+            ui.studentFinishedRace.classList.add('hidden');
+            
+            const currentStationNum = team.route[team.currentRouteIndex];
+            ui.studentStationProgress.textContent = `Station ${team.currentRouteIndex + 1} of ${gameData.numStations}`;
+            
+            const stationData = gameData.stations.find(s => s.stationIndex === currentStationNum);
+            
+            ui.studentLocationHint.textContent = stationData.locationHint;
+            ui.studentQuestionText.textContent = stationData.question.text;
+            
+            ui.studentOptionsContainer.innerHTML = '';
+            ['A', 'B', 'C', 'D'].forEach(opt => {
+                if(stationData.question.options[opt]) {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors font-medium text-slate-700 flex items-center gap-4";
+                    btn.innerHTML = `<span class="bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${opt}</span> <span>${escapeHTML(stationData.question.options[opt])}</span>`;
+                    
+                    btn.onclick = () => submitStudentAnswer(gameData, team, stationData, opt, btn);
+                    ui.studentOptionsContainer.appendChild(btn);
+                }
+            });
+        }
+        
+        async function submitStudentAnswer(gameData, team, stationData, selectedOpt, btnElement) {
+            // Disable buttons temporarily
+            const buttons = ui.studentOptionsContainer.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+            
+            if (selectedOpt === stationData.question.correctAnswer) {
+                btnElement.classList.replace('border-slate-200', 'border-green-500');
+                btnElement.classList.replace('hover:bg-amber-50', 'bg-green-50');
+                
+                showToast("Correct! Moving to next station...");
+                
+                const updatedTeams = gameData.teams.map(t => {
+                    if (t.id === team.id) {
+                        const newIndex = t.currentRouteIndex + 1;
+                        return { ...t, currentRouteIndex: newIndex, completed: newIndex >= gameData.numStations };
+                    }
+                    return t;
+                });
+                
+                try {
+                    const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', studentGameId);
+                    await updateDoc(gameRef, { teams: updatedTeams });
+                } catch(e) {
+                    showToast("Error saving progress.", true);
+                    buttons.forEach(b => b.disabled = false);
+                }
+            } else {
+                btnElement.classList.replace('border-slate-200', 'border-red-400');
+                btnElement.classList.replace('hover:bg-amber-50', 'bg-red-50');
+                showToast("Incorrect answer. Try again!", true);
+                
+                // Re-enable after delay
+                setTimeout(() => {
+                    btnElement.classList.replace('border-red-400', 'border-slate-200');
+                    btnElement.classList.replace('bg-red-50', 'hover:bg-amber-50');
+                    buttons.forEach(b => b.disabled = false);
+                }, 1500);
+            }
+        }
+        
+        function exitStudentMode() {
+            if (unsubscribeStudentGame) unsubscribeStudentGame();
+            isStudentMode = false;
+            studentGameId = null;
+            studentTeamId = null;
+            
+            ui.studentJoinForm.reset();
+            handleAuthStateChanged(auth.currentUser); // Recalculate views
+        }
+
+        // --- Action Logic (CRUD) ---
+        async function createCollection(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const name = ui.inputCollectionName.value.trim();
+            if (!name) return;
+
+            const submitBtn = ui.formNewCollection.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            try {
+                const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'collections');
+                await addDoc(colRef, {
+                    name: name,
+                    createdAt: Date.now()
+                });
+                closeModals();
+                ui.inputCollectionName.value = '';
+                showToast("Collection created successfully.");
+            } catch (error) {
+                console.error("Error creating collection:", error);
+                showToast("Failed to create collection.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Create';
+            }
+        }
+
+        async function saveQuestion(e) {
+            e.preventDefault();
+            if (!currentUser || !currentCollectionId) return;
+
+            const submitBtn = ui.formNewQuestion.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            const questionData = {
+                text: document.getElementById('input-q-text').value.trim(),
+                options: {
+                    A: document.getElementById('input-q-optA').value.trim(),
+                    B: document.getElementById('input-q-optB').value.trim(),
+                    C: document.getElementById('input-q-optC').value.trim(),
+                    D: document.getElementById('input-q-optD').value.trim(),
+                },
+                correctAnswer: document.getElementById('input-q-correct').value,
+            };
+
+            try {
+                if (editingQuestionId) {
+                    const qRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'questions', editingQuestionId);
+                    await updateDoc(qRef, questionData);
+                    showToast("Question updated.");
+                } else {
+                    questionData.collectionId = currentCollectionId;
+                    questionData.createdAt = Date.now();
+                    const qRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'questions');
+                    await addDoc(qRef, questionData);
+                    showToast("Question added.");
+                }
+                
+                closeModals();
+                ui.formNewQuestion.reset();
+            } catch (error) {
+                console.error("Error saving question:", error);
+                showToast("Failed to save question.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = editingQuestionId ? 'Update Question' : 'Save Question';
+            }
+        }
+
+        async function deleteQuestion(id) {
+            if (!currentUser) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'questions', id));
+                showToast("Question deleted.");
+            } catch (error) {
+                console.error("Error deleting question:", error);
+                showToast("Failed to delete question.", true);
+            }
+        }
+
+        // --- CSV Parsing and Import ---
+        function parseCSVLine(text) {
+            // Basic CSV parser handling quotes
+            let ret = [];
+            let inQuote = false;
+            let value = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (inQuote) {
+                    if (char === '"') {
+                        if (i < text.length - 1 && text[i+1] === '"') { value += '"'; i++; } 
+                        else { inQuote = false; }
+                    } else { value += char; }
+                } else {
+                    if (char === '"') { inQuote = true; }
+                    else if (char === ',') { ret.push(value.trim()); value = ''; }
+                    else { value += char; }
+                }
+            }
+            ret.push(value.trim());
+            return ret;
+        }
+
+        async function handleCsvUpload(e) {
+            const file = e.target.files[0];
+            if (!file || !currentUser || !currentCollectionId) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const text = event.target.result;
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                let successCount = 0;
+                let failCount = 0;
+
+                const qRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'questions');
+                
+                showToast("Importing questions... please wait.");
+
+                for (let line of lines) {
+                    const parts = parseCSVLine(line);
+                    
+                    // Expecting: Question, OptA, OptB, OptC, OptD, Correct(A/B/C/D)
+                    if (parts.length >= 6) {
+                        try {
+                            const correctAnswer = parts[5].toUpperCase().replace(/[^ABCD]/g, '');
+                            if (['A','B','C','D'].includes(correctAnswer)) {
+                                await addDoc(qRef, {
+                                    collectionId: currentCollectionId,
+                                    text: parts[0],
+                                    options: { A: parts[1], B: parts[2], C: parts[3], D: parts[4] },
+                                    correctAnswer: correctAnswer,
+                                    createdAt: Date.now() + successCount // ensure slightly different timestamps
+                                });
+                                successCount++;
+                            } else {
+                                failCount++;
+                            }
+                        } catch (err) { failCount++; }
+                    } else {
+                        failCount++;
+                    }
+                }
+                
+                ui.csvFileInput.value = ''; // reset
+                showToast(`Import complete. ${successCount} added. ${failCount > 0 ? failCount + ' failed formatting.' : ''}`);
+            };
+            
+            reader.readAsText(file);
+        }
+
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            // Auth Toggle
+            ui.authToggleBtn.addEventListener('click', () => {
+                isLoginMode = !isLoginMode;
+                ui.authTitle.textContent = isLoginMode ? 'Teacher Login' : 'Register Account';
+                ui.authSubtitle.textContent = isLoginMode ? 'Sign in to manage your collections' : 'Create an account to start building collections';
+                ui.authSubmitBtn.querySelector('span').textContent = isLoginMode ? 'Sign In' : 'Sign Up';
+                ui.authToggleBtn.textContent = isLoginMode ? 'Need an account? Register here' : 'Already have an account? Sign in here';
+            });
+
+            // Auth Submit
+            ui.authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = ui.authEmail.value;
+                const password = ui.authPassword.value;
+                
+                ui.authSubmitBtn.disabled = true;
+                const originalText = ui.authSubmitBtn.innerHTML;
+                ui.authSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+                try {
+                    if (isLoginMode) {
+                        await signInWithEmailAndPassword(auth, email, password);
+                    } else {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                    }
+                    ui.authForm.reset();
+                } catch (error) {
+                    showToast(error.message, true);
+                } finally {
+                    ui.authSubmitBtn.disabled = false;
+                    ui.authSubmitBtn.innerHTML = originalText;
+                }
+            });
+
+            // Logout
+            ui.logoutBtn.addEventListener('click', () => signOut(auth));
+
+            // Navigation
+            ui.backToDashboardBtn.addEventListener('click', showDashboard);
+
+            // Modals Logic
+            const closeModals = () => {
+                document.querySelectorAll('.fixed.inset-0').forEach(el => el.classList.add('hidden'));
+            };
+            document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeModals));
+            
+            document.getElementById('open-new-collection-modal').addEventListener('click', () => {
+                ui.modalNewCollection.classList.remove('hidden');
+                ui.inputCollectionName.focus();
+            });
+            
+            document.getElementById('open-new-question-modal').addEventListener('click', () => {
+                editingQuestionId = null; // Reset to creation mode
+                ui.formNewQuestion.reset();
+                ui.modalNewQuestion.querySelector('h3').textContent = 'Add Question';
+                ui.formNewQuestion.querySelector('button[type="submit"]').textContent = 'Save Question';
+                
+                ui.modalNewQuestion.classList.remove('hidden');
+                document.getElementById('input-q-text').focus();
+            });
+            
+            // Search Input Logic
+            ui.searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value;
+                renderQuestions(); // Re-render triggers filtering
+            });
+
+            // Forms Submission
+            ui.formNewCollection.addEventListener('submit', createCollection);
+            ui.formNewQuestion.addEventListener('submit', saveQuestion);
+
+            // CSV Logic
+            ui.triggerCsvUpload.addEventListener('click', () => ui.csvFileInput.click());
+            ui.csvFileInput.addEventListener('change', handleCsvUpload);
+            
+            // Game Event Listeners
+            ui.openGameSetupBtn.addEventListener('click', openGameSetup);
+            ui.setupBackBtn.addEventListener('click', () => openCollection(currentCollectionId));
+            
+            // Student Joining logic
+            ui.studentJoinForm.addEventListener('submit', handleStudentJoin);
+            ui.studentLeaveBtn.addEventListener('click', exitStudentMode);
+            
+            // Re-render stations when number changes
+            ui.setupNumStations.addEventListener('input', () => {
+                const val = parseInt(ui.setupNumStations.value);
+                if (val > 0 && val <= 50) renderSetupStations();
+            });
+            
+            ui.gameSetupForm.addEventListener('submit', launchLiveGame);
+            ui.endSessionBtn.addEventListener('click', endLiveGame);
+        }
+
+        // --- Helpers ---
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+        
+        // Expose closeModals globally for internal form resets
+        window.closeModals = () => document.querySelectorAll('.fixed.inset-0').forEach(el => el.classList.add('hidden'));
+
+        // Start App
+        init();
+
+    </script>
+</body>
+</html>
