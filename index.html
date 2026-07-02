@@ -259,6 +259,18 @@
                     <span class="text-xs text-slate-500">Master code for this event</span>
                 </div>
             </div>
+            
+            <!-- Station Codes to Hide (New Section) -->
+            <div class="mb-10 bg-indigo-50 border border-indigo-100 rounded-2xl p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <i class="fa-solid fa-print text-indigo-500 text-xl"></i>
+                    <h3 class="text-xl font-bold text-slate-800">Station Codes to Hide</h3>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">Print or write down these auto-generated codes and hide them at their respective physical locations. Students need them to unlock their challenges.</p>
+                <div id="live-station-codes-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Station codes injected dynamically -->
+                </div>
+            </div>
 
             <!-- Teams Grid -->
             <div class="flex justify-between items-center mb-6">
@@ -447,6 +459,7 @@
             liveGameCode: document.getElementById('live-game-code'),
             liveStationCount: document.getElementById('live-station-count'),
             liveTeamsGrid: document.getElementById('live-teams-grid'),
+            liveStationCodesGrid: document.getElementById('live-station-codes-grid'),
             endSessionBtn: document.getElementById('end-session-btn'),
             
             // Student Game View
@@ -785,13 +798,9 @@
                     <div class="bg-indigo-100 text-indigo-800 w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                         ${i}
                     </div>
-                    <div class="w-full md:w-1/2">
+                    <div class="w-full">
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Location Clue</label>
-                        <input type="text" id="station-loc-${i}" placeholder="e.g. Under Oak Tree" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
-                    <div class="w-full md:w-1/2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Unlock Code</label>
-                        <input type="text" id="station-code-${i}" placeholder="e.g. APPLE" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono uppercase">
+                        <input type="text" id="station-loc-${i}" placeholder="e.g. Under the large Oak Tree by the library" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
                     </div>
                 `;
                 ui.setupStationsContainer.appendChild(row);
@@ -816,16 +825,19 @@
                 
                 const shuffledQuestions = [...collectionQuestions].sort(() => 0.5 - Math.random());
                 
-                // Build stations array with randomly embedded question data
+                // Build stations array with randomly embedded question data and auto-generated codes
                 const stations = [];
                 for (let i = 1; i <= numStations; i++) {
                     // Use modulo to wrap around if there are more stations than questions
                     const qData = shuffledQuestions[(i - 1) % shuffledQuestions.length];
                     
+                    // Auto-generate a 4-character unlock code for this station
+                    const stationCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    
                     stations.push({
                         stationIndex: i,
                         locationHint: document.getElementById(`station-loc-${i}`).value.trim(),
-                        stationCode: document.getElementById(`station-code-${i}`).value.trim().toUpperCase(),
+                        stationCode: stationCode,
                         question: {
                             text: qData.text,
                             options: qData.options,
@@ -918,6 +930,23 @@
             ui.liveGameCode.textContent = gameData.gameCode;
             ui.liveStationCount.textContent = `Total Stations: ${gameData.numStations}`;
             
+            // 1. Render Station Codes for Teacher
+            ui.liveStationCodesGrid.innerHTML = '';
+            gameData.stations.forEach(station => {
+                const codeCard = document.createElement('div');
+                codeCard.className = "bg-white rounded-xl border border-indigo-100 p-4 shadow-sm relative overflow-hidden";
+                codeCard.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"></div>
+                    <div class="pl-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Station ${station.stationIndex} Code</span>
+                        <div class="text-2xl font-black text-slate-800 tracking-widest font-mono mb-2">${station.stationCode}</div>
+                        <p class="text-xs font-medium text-indigo-600 line-clamp-2"><i class="fa-solid fa-location-dot mr-1"></i> ${escapeHTML(station.locationHint)}</p>
+                    </div>
+                `;
+                ui.liveStationCodesGrid.appendChild(codeCard);
+            });
+
+            // 2. Render Team Progress
             ui.liveTeamsGrid.innerHTML = '';
             
             gameData.teams.forEach(team => {
